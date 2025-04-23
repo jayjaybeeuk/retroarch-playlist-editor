@@ -30,26 +30,12 @@ var loadedDatabases={};
 var lplQueueCount=0;
 var suggestedPathsCommon=[];
 
-
-
-
 /* service worker */
 const FORCE_HTTPS=true;
 if(FORCE_HTTPS && location.protocol==='http:')
 	location.href=window.location.href.replace('http:','https:');
 else if(location.protocol==='https:' && 'serviceWorker' in navigator && window.location.hostname==='www.marcrobledo.com')
 	navigator.serviceWorker.register('/retroarch-playlist-editor/_cache_service_worker.js', {scope: '/retroarch-playlist-editor/'});
-
-
-
-
-
-
-
-
-
-
-
 
 /* string manipulation */
 function fixString(string){
@@ -299,9 +285,6 @@ function _sortContentByCrc(a,b){
 		return 1;
 	return 0
 }
-
-
-
 
 function rebuildSelectCore(playlist){
 	var newCores=0;
@@ -610,26 +593,6 @@ Content.prototype.guessCrcFromDatabase=function(refreshCell){
 	return false;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* settings */
 var Settings=(function(){
 	var LOCALSTORAGE_ID='retroarchPlaylistEditorSettings';
@@ -914,54 +877,51 @@ function queueParseZip(zipFile, content){
 	fr.readAsArrayBuffer(zipFile);
 }
 
-
-
-
-
 function fetchDatabase(databaseName, onLoadFunc, param1, param2, param3){
-	if(FETCHABLE_DATABASES.indexOf(databaseName)===-1 && !loadedDatabases[databaseName])
-		loadedDatabases[databaseName]={};
-	
-	if(loadedDatabases[databaseName]){
+	if (knownDatabases.indexOf(databaseName) === -1) {
+		console.log(`Database "${databaseName}" is not known.`);
+		loadedDatabases[databaseName] = {};
+	}
+
+	if (loadedDatabases[databaseName]) {
 		onLoadFunc(param1, param2, param3);
 		return false;
 	}
-	console.log('fetching db: '+databaseName);
+	console.log(`Fetching database: ${databaseName}`);
 
-	fetch('./app/databases/'+databaseName+'.txt')
+	fetch(`./app/databases/${databaseName}.txt`)
 		.then(result => result.text())
 		.then(text => {
-			//parse database
-			var lines=text.split('\n');
-			//var extensions=lines[0].split(',');
+			// Parse database
+			const lines = text.split('\n');
 			
-			loadedDatabases[databaseName]={};
-			for(var i=1; i<lines.length; i++){
-				var data=lines[i].trim().split('|');
+			loadedDatabases[databaseName] = {};
+			for (let i = 1; i < lines.length; i++) {
+				const data = lines[i].trim().split('|');
 
-				if(data.length>1){
-					var item={
-						rom_name:data[0],
-						crc:data[1].split(','),
-						name:data[2] || data[0]
+				if (data.length > 1) {
+					const item = {
+						rom_name: data[0],
+						crc: data[1].split(','),
+						name: data[2] || data[0]
 					};
-					loadedDatabases[databaseName][item.rom_name]=item;
+					loadedDatabases[databaseName][item.rom_name] = item;
 
-					if(item.crc.length===1 && !item.crc[0])
-						item.crc=[];
+					if (item.crc.length === 1 && !item.crc[0])
+						item.crc = [];
 					
-					for(var j=0; j<item.crc.length; j++){
-						if(item.crc[j])
-							loadedDatabases[databaseName]['crc_'+item.crc[j].toUpperCase()]=item;
+					for (let j = 0; j < item.crc.length; j++) {
+						if (item.crc[j])
+							loadedDatabases[databaseName][`crc_${item.crc[j].toUpperCase()}`] = item;
 					}
 				}
 			}
 
 			onLoadFunc(param1, param2, param3);
 		})
-		.catch(function(evt){
-			console.error('error parsing database: '+evt.message);
-			loadedDatabases[databaseName]={};
+		.catch((evt) => {
+			console.error(`Error fetching database: ${evt.message}`);
+			loadedDatabases[databaseName] = {};
 		});
 }
 
@@ -1250,13 +1210,6 @@ addEvent(window,'load',function(){
 		this.children[0].innerHTML='- Detect -';
 	});
 
-
-
-
-
-
-
-
 	/* drag and drop */
 	document.body.appendChild(DragAndDropZone);
 
@@ -1376,24 +1329,6 @@ function buildExample(path){
 	);
 }
 
-
-/*
-function openSelectBalloon(){
-	if(currentPlaylist.content.length){
-		if(UI.isBalloonOpen('select')){
-			if(currentPlaylist.selectedContent.length){
-				currentPlaylist.selectableTable.unselectAll();
-			}else{
-				currentPlaylist.selectableTable.selectAll();
-			}
-			hideBalloon('select');
-		}else{
-			UI.showBalloon('select');
-		}
-	}
-}
-*/
-
 function searchContent(filter){
 	filter=filter.trim();
 	
@@ -1441,59 +1376,6 @@ function searchContent(filter){
 		currentPlaylist.dataTable.deselectAll(true);
 	}
 }
-
-
-
-
-
-/*
-function refreshSearchDatalist(db_name){
-	var datalist=el('datalist-search');
-	datalist.innerHTML='';
-	
-	var db=databases[db_name];
-	
-	for(var title in db){
-		if(!/^crc_/.test(title)){
-			var option=document.createElement('option');
-			option.value=title;
-			datalist.appendChild(option);
-		}
-	}
-}
-function searchInDatabase(db_name, query, resultsContainer, onClick){
-	resultsContainer.innerHTML='';
-
-	var words=query.clean().split('_');
-	if(words.length===0)
-		return [];
-	
-	var db=databases[db_name+'_clean'];
-	
-	var results=[];
-	for(var title in db){
-		var matches=0;
-		for(var i=0; i<words.length; i++){
-			if(title.indexOf(words[i])!==-1)
-				matches++;
-		}
-		if(matches===words.length){
-			results.push(db[title]);
-			if(results.length===8)
-				break;
-		}
-	}
-	
-	for(var i=0; i<results.length; i++){
-		var li=document.createElement('li');
-		li.crcValue=results[i].crc[0];
-		li.innerHTML=results[i].name;
-		li.addEventListener('click', onClick, false);
-		resultsContainer.appendChild(li);
-	}
-	return results;
-}
-*/
 
 function refreshEditBalloon(playlist, precalculatedSelectedContent, refreshSearchBox){
 	var selectedContent=precalculatedSelectedContent || playlist.dataTable.getSelectedElements();
@@ -1567,11 +1449,6 @@ function refreshEditBalloon(playlist, precalculatedSelectedContent, refreshSearc
 		hide('toolbar-right');
 	}
 
-
-
-
-
-
 	if(selectedContent.length===playlist.dataTable.getLength() && selectedContent.length){
 		el('button-toolbar-select').children[0].src=el('button-toolbar-select').children[0].src.replace(/_[a-z]+\.svg$/, '_all.svg');
 		el('button-select-none').className='btn';
@@ -1638,46 +1515,11 @@ var MASSIVE_RENAME=[
 				.replace(/ \[\!\]/, '')
 			;
 		}
-	}/*,{
-		label:'Fix old tags',
-		filter:function(content){
-			return content.name
-				.replace(/ \((v1\.1|Rev A)\)/, ' (Rev 1)')
-				.replace(/ \((v1\.2|Rev B)\)/, ' (Rev 2)')
-				.replace(/ \[\(!|S|M|C|BF)\]/, '')
-				.replace(/ \(J\)/, ' (Japan)')
-				.replace(/ \(U\)/, ' (USA)')
-				.replace(/ \(E\)/, ' (Europe)')
-				.replace(/ \(UE\)/, ' (USA, Europe)')
-				.replace(/ \(JUE\)/, ' (World)')
-				.replace(/ \(S\)/, ' (Spain)')
-				.replace(/ \(F\)/, ' (France)')
-				.replace(/ \(I\)/, ' (Italy)')
-				.replace(/ \(G\)/, ' (Germany)')
-				.replace(/ \(PD\)/, ' [homebrew]')
-				.replace(/\]\[/g, '] [')
-				.replace(/ \[o\d+?\]/, ' [overdump]')
-				.replace(/ \[b\d+?\]/, ' [bad dump]')
-				.replace(/ \[(f\d+?|BF)\]/, ' [old fix]')
-				.replace(/ \[hI.?\]/, ' [hacked intro]')
-				.replace(/ \[t\d\]/, ' [hacked trainer]')
-				.replace(/ \[h.*?\]/, ' [hacked]')
-				.replace(/ \[T[+\-]Eng,.*?\]/, ' [translated-en]')
-				.replace(/ \[T[+\-]Spa,.*?\]/, ' [translated-es]')
-				.replace(/ \[T[+\-]Ger,.*?\]/, ' [translated-de]')
-			;
-		}
-	}*/
+	}
 ];
-
-
-
 
 /*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/FileSaver.js */
 var saveAs=saveAs||function(e){"use strict";if(typeof e==="undefined"||typeof navigator!=="undefined"&&/MSIE [1-9]\./.test(navigator.userAgent)){return}var t=e.document,n=function(){return e.URL||e.webkitURL||e},r=t.createElementNS("http://www.w3.org/1999/xhtml","a"),o="download"in r,a=function(e){var t=new MouseEvent("click");e.dispatchEvent(t)},i=/constructor/i.test(e.HTMLElement)||e.safari,f=/CriOS\/[\d]+/.test(navigator.userAgent),u=function(t){(e.setImmediate||e.setTimeout)(function(){throw t},0)},s="application/octet-stream",d=1e3*40,c=function(e){var t=function(){if(typeof e==="string"){n().revokeObjectURL(e)}else{e.remove()}};setTimeout(t,d)},l=function(e,t,n){t=[].concat(t);var r=t.length;while(r--){var o=e["on"+t[r]];if(typeof o==="function"){try{o.call(e,n||e)}catch(a){u(a)}}}},p=function(e){if(/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(e.type)){return new Blob([String.fromCharCode(65279),e],{type:e.type})}return e},v=function(t,u,d){if(!d){t=p(t)}var v=this,w=t.type,m=w===s,y,h=function(){l(v,"writestart progress write writeend".split(" "))},S=function(){if((f||m&&i)&&e.FileReader){var r=new FileReader;r.onloadend=function(){var t=f?r.result:r.result.replace(/^data:[^;]*;/,"data:attachment/file;");var n=e.open(t,"_blank");if(!n)e.location.href=t;t=undefined;v.readyState=v.DONE;h()};r.readAsDataURL(t);v.readyState=v.INIT;return}if(!y){y=n().createObjectURL(t)}if(m){e.location.href=y}else{var o=e.open(y,"_blank");if(!o){e.location.href=y}}v.readyState=v.DONE;h();c(y)};v.readyState=v.INIT;if(o){y=n().createObjectURL(t);setTimeout(function(){r.href=y;r.download=u;a(r);h();c(y);v.readyState=v.DONE});return}S()},w=v.prototype,m=function(e,t,n){return new v(e,t||e.name||"download",n)};if(typeof navigator!=="undefined"&&navigator.msSaveOrOpenBlob){return function(e,t,n){t=t||e.name||"download";if(!n){e=p(e)}return navigator.msSaveOrOpenBlob(e,t)}}w.abort=function(){};w.readyState=w.INIT=0;w.WRITING=1;w.DONE=2;w.error=w.onwritestart=w.onprogress=w.onwrite=w.onabort=w.onerror=w.onwriteend=null;return m}(typeof self!=="undefined"&&self||typeof window!=="undefined"&&window||this.content);if(typeof module!=="undefined"&&module.exports){module.exports.saveAs=saveAs}else if(typeof define!=="undefined"&&define!==null&&define.amd!==null){define("FileSaver.js",function(){return saveAs})}
-
-
-
 
 /* string cleaner */
 if(typeof String.prototype.clean==='undefined'){
